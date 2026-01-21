@@ -1,0 +1,179 @@
+\documentclass[UTF8]{ctexart}
+\usepackage{amsmath}
+\usepackage[colorlinks,linkcolor=black,anchorcolor=blue,citecolor=green]{hyperref}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage{subfigure}
+\usepackage{geometry}
+\RequirePackage{fix-cm}
+
+
+\newcommand{\rmd}{\mathrm{d}}
+
+\linespread{1.5}
+
+\geometry{a4paper,left=2cm,right=2cm,top=2cm,bottom=2cm}
+
+\begin{document}
+
+\begin{titlepage}
+    \heiti
+    \vspace*{100pt}
+    \begin{center}
+        \fontsize{32pt}{0} 弹\quad 性\quad 力\quad 学\quad 大\quad 作\quad 业 \\
+        \vspace*{48pt}
+        \LARGE（2025\ -\ 2026\ 学年度\quad 秋季学期）\\
+        \vspace*{48pt}
+
+        {\fontsize{20pt}{24pt}\selectfont \underline{\makebox[450pt]{基于Python的集中力压球冠壳体仿真实验}}}\\
+        \vspace*{72pt}
+
+        \heiti\Large 姓名\ \ \underline{\makebox[168pt]{\songti 秋日晖}}\\
+        \heiti\Large 学号\ \ \underline{\makebox[168pt]{\songti 2023114514}}\\
+        \heiti\Large 院系\ \ \underline{\makebox[168pt]{\songti 工程力学学院}}\\
+        \heiti\Large 教师\ \ \underline{\makebox[168pt]{\songti 404 not found}}\\
+        \heiti\Large 时间\ \ \underline{\makebox[168pt]{\songti 2026年1月}}\\
+    \end{center}
+\end{titlepage}
+
+\newpage
+
+\tableofcontents
+\thispagestyle{empty}
+
+\newpage
+
+\section{引言}
+
+薄壳结构因其优异的比强度和轻量化特性，在航空航天、建筑工程及微纳机电系统等领域有着广泛的应用。然而，由于几何非线性的存在，这类结构在受到外部载荷时极易发生复杂的失稳屈曲现象。其中，球壳在集中载荷作用下的变形响应是弹性力学中一个经典且极具代表性的非线性问题。
+
+日常生活中的经验（如按压乒乓球或塑料瓶）表明，当球壳受到单点压入时，其变形模式并非始终保持轴对称。随着压入深度的增加，初始的轴对称圆形凹陷会失去稳定性，自发发生对称性破缺，转变为三角形、四边形乃至更高阶的多边形褶皱形态。Vaziri、Mahadevan 等人的研究指出，这种行为本质上源于壳体中弯曲能与膜应变能之间的竞争：为了释放高膜拉伸能，系统倾向于通过形成局部化的脊线和顶点来重新组织变形场，从而寻找总势能更低的非轴对称平衡态。
+
+鉴于该问题具有非线性、多稳态以及对初始缺陷高度敏感等特征，传统的解析求解方法难以奏效。本研究旨在通过基于最小势能原理的数值计算探究球冠壳体在位移控制下的点压入屈曲机制。基于 Föppl-von Kármán 浅壳非线性理论，本研究利用 Python 编写了自动化求解程序。研究采用中心有限差分法对能量泛函进行离散，引入罚函数法处理位移加载与边界约束，并结合多初值试探策略克服能量分布中的局部极小值陷阱。通过模拟不同压入深度下的壳体变形，本研究将重现多边形模态演化的物理过程。
+
+\section{仿真理论}
+
+球冠的仿真基于最小势能原理。在本研究采用的浅壳非线性理论模型中，球冠壳体的变形能主要由两部分构成：弯曲能 $U_b$ 与膜应变能 $U_m$ 。弯曲能表征了壳体抵抗曲率变化的能力。其物理意义是中性面不发生拉伸或压缩时的弯曲变形能量。弯曲刚度与壳体厚度 $t$ 的立方成正比。而膜应变能源于壳体中面的拉伸或压缩变形，其刚度与厚度呈线性关系。两者的具体形式如下：
+
+\begin{equation}
+    U_b = \frac{1}{2} \int_{A} D \left( \kappa_r^2 + \kappa_\phi^2 + 2 \nu \kappa_r \kappa_\phi + 2 (1 - \nu) \kappa_{r \phi}^2 \right) \rmd A
+\end{equation}
+
+\begin{equation}
+    U_m = \frac{1}{2} \int_{A} K \left( \varepsilon_r^2 + \varepsilon_\phi^2 + 2 \nu \varepsilon_r \varepsilon_\phi + 2 (1 - \nu) \varepsilon_{r \phi}^2 \right) \rmd A
+\end{equation}
+
+式子中各个弹性参数定义如下，其中 $E, \nu$ 分别是材料的杨氏模量、泊松比：
+
+\begin{itemize}
+    \item 弯曲刚度 $D = \frac{E t^3}{12 (1 - \nu^2)}$
+    \item 膜刚度 $K = \frac{E t}{1 - \nu^2}$
+\end{itemize}
+
+记球面的半径为 $R$ ，挠度为 $w$ ，取球冠面上的曲线极坐标系，则曲率与应变的各项分量表达式如下：
+
+\[
+\begin{cases}
+    \text{径向曲率} & \kappa_r = \frac{\partial^2 w}{\partial r^2} \\
+    \text{环向曲率} & \kappa_\phi = \frac{1}{r}\frac{\partial w}{\partial r} + \frac{1}{r^2}\frac{\partial^2 w}{\partial \phi^2} \\
+    \text{剪切曲率} & \kappa_{r\phi} = \frac{1}{r}\frac{\partial^2 w}{\partial r \partial \phi} - \frac{1}{r^2}\frac{\partial w}{\partial \phi}
+\end{cases}
+\qquad
+\begin{cases}
+    \text{径向应变} & \varepsilon_r = \frac{w}{R} + \frac{1}{2} \left( \frac{\partial w}{\partial r} \right)^2 \\
+    \text{环向应变} & \varepsilon_\phi = \frac{w}{R} + \frac{1}{2} \left( \frac{1}{r} \frac{\partial w}{\partial \phi} \right)^2 \\
+    \text{剪切应变} & \varepsilon_{r \phi} = \frac{1}{r} \frac{\partial w}{\partial r} \frac{\partial w}{\partial \phi}
+\end{cases}
+\]
+
+除此之外，总势能还需要纳入外力功 $W_{\mathrm{force}}$ 的影响。出于仿真简便考虑，本研究采用球冠顶点位移 $w_{\mathrm{apex}}$ 控制方式施加集中力 $F$ 。认为 $F$ 与 $w_{\mathrm{apex}}$ 呈线性关系，则外力功可表示为：
+
+\begin{equation}
+    W_{\mathrm{force}}
+    = \int_0^{w_{\mathrm{apex}}} \left( - k_{\mathrm{spring}} w \right) \, \rmd w
+    = - \frac{1}{2} k_{\mathrm{spring}} w_{\mathrm{apex}}^2
+\end{equation}
+
+其中 $k_{\mathrm{spring}}$ 为等效弹簧刚度系数。
+
+求解的过程中，需要球冠顶点的真实位移 $w_{\mathrm{apex}}$ 尽量接近预设的位移值 $z_{\mathrm{target}}$ 。为此，本研究引入罚函数法来处理该条件。罚函数法是一种常用的数值优化技术，通过在目标函数中添加惩罚项来满足约束条件。在本研究中，罚函数项取为：
+
+\begin{equation}
+    W_{\mathrm{apex}} = k_{\mathrm{spring}} (w_{\mathrm{apex}} - z_{\mathrm{target}})^2
+\end{equation}
+
+最后，考虑边界条件。本研究所研究的球冠壳体边界为简支边界，即边界处挠度为零且无弯矩。为求解方便，本研究将边界条件作为“损失函数”的正则项加入总势能表达式中。罚函数法通过在总势能中添加惩罚项来强制满足边界条件。对于简支边界条件，
+记边界半径为 $a$ ，则罚函数项可表示为：
+
+\begin{equation}
+    W_{\mathrm{boundary}}
+    = k_{\mathrm{boundary}} \int_0^{2 \pi} \left( w^2 + \left( \frac{\partial w}{\partial r} \right)^2 \right) a \rmd \theta
+\end{equation}
+
+综合以上各项，球冠壳体的总势能表达式为：
+
+\begin{equation}
+    \Pi = U_b + U_m - W_{\mathrm{force}} + W_{\mathrm{apex}} + W_{\mathrm{boundary}}
+\end{equation}
+
+求解即是通过最小化总势能 $\Pi$ 实现的。
+
+球冠作为具有正高斯曲率的几何体，在受到点载荷压入时，其变形行为受制于弯曲能与膜应变能的剧烈竞争。在小变形阶段，壳体通过轴对称的镜面屈曲来适应载荷，此时膜应力尚未占据主导。随着压入深度增加，为了避免在大面积区域产生“昂贵”（对于能量层面）的膜拉伸变形，壳体倾向于破坏轴对称性，转而形成多边形结构。Vaziri 等人的研究指出，这种多边形构型之所以发生，是因为这种构型属于准不可伸缩变形，能够将原本分布于整个面的拉伸应变集中在局部的脊和顶点上，从而显著降低系统的总势能。借助此现象，仿真代码中显式地构建 $n=3, 4, 5 \dots$ 等不同模态的初始猜测并在优化后比较其能量大小，这一策略直接对应于文献中描述的多稳态特性。
+
+球壳屈曲过程中存在多个亚稳态，且在不同模态之间存在迟滞转换。这意味着系统的能量分布是非凸的，存在大量局部极小值。如果仅使用单一的初始条件（如轴对称状态）进行梯度下降，求解器极易陷入局部的轴对称高能态，而无法发现能量更低的多边形解。因此，代码加入了初值试探，通过预设特定的径向波数 $n$ ，指引优化器探索特定的能量分支。通过比较不同模态的最终势能，选取能量最低者作为物理真实解。这一思路既保证了计算效率，又能准确展现球壳屈曲的多边形模态。
+
+\section{代码实现}
+
+为了探究球冠壳体在点载荷作用下的非线性屈曲行为及其多稳态特性，本研究开发了一套基于直接变分原理的 Python 数值模拟程序。该方法的的核心思想是寻找使系统总势能达到驻值的位移场配置。
+
+在数值实现层面，程序首先对连续的壳体几何域进行离散化处理，构建了基于极坐标系的二维正交网格。利用中心有限差分格式，我们将挠度场 $w = w(r, \phi)$ 的一阶、二阶空间导数转化为代数运算，进而精确计算出各网格点处的应变与曲率张量。在此基础上，系统的总势能由弯曲能、膜应变能、外力功与罚函数约束能构成。罚函数能量项将原本复杂的约束优化问题转化为更易于处理的无约束优化问题，从而保证了边界条件在数值层面的满足。在实现过程中， $k_{\mathrm{spring}}$ 与 $k_{\mathrm{boundary}}$ 分别取 $5 K a, \frac{5 D}{a^2}$ 。
+
+鉴于球壳屈曲问题属于高度非凸的能量最小化问题，其能量状态中密布着代表不同屈曲模态的局部极小值陷阱，传统的单一初值梯度下降法极易陷入轴对称的高能态而无法收敛至物理真实的失稳解。本研究采用系统化的多模态试探-选择策略。算法不再依赖单一的零位移初始猜测，而是基于线性屈曲理论的启发，预先构建了一系列包含不同周向波数 $n$ 的边缘局域化扰动函数作为初值库。这些具有特定对称性的初值引导优化求解器（采用 L-BFGS-B 拟牛顿算法）分别探索能量分布中的不同分支。
+
+在求解过程中，算法对各个预设模态进行弛豫，使其分别收敛至各自吸引域内的平衡态。然后，依据最小势能原理，程序通过横向比较所有收敛解的最终能量值，筛选出势能最低的构型作为该加载步下的真实物理状态。这种结合了有限差分离散、罚函数约束处理以及全局多初值搜索的混合数值策略，有效地克服了非线性方程求解的收敛性难题，能够展现壳体的多边形褶皱模态。
+
+\section{仿真结果及分析}
+
+取 4 组不同参数进行仿真，结果如下。其中 $\bar{z} = \frac{z}{h}$ 为归一化压入深度。
+
+\begin{figure}[H]
+    \label{fig:results}
+    \centering
+    \subfigure[$\bar{z} = 0.41$]{
+        \includegraphics[width=0.45\textwidth]{../code/output/buckling_z0.41_n4.png}
+    }
+    \subfigure[$\bar{z} = 0.63$]{
+        \includegraphics[width=0.45\textwidth]{../code/output/buckling_z0.63_n5.png}
+    }
+    
+    \subfigure[$\bar{z} = 0.69$]{
+        \includegraphics[width=0.45\textwidth]{../code/output/buckling_z0.69_n6.png}
+    }
+    \subfigure[$\bar{z} = 0.83$]{
+        \includegraphics[width=0.45\textwidth]{../code/output/buckling_z0.83_n8.png}
+    }
+    \caption{仿真结果}
+\end{figure}
+
+从图 \ref{fig:results} 可以观察到球冠壳体在不同压入深度下的屈曲模态演化。壳体变形主要集中在顶点附近区域，形成了对称分布的凹陷。这一构型使得膜应变集中于径向脊线上，降低了系统的总势能。随着 $\bar{z}$ 增加，壳体的屈曲模态发生了显著的变化，周向波数 $n$ 呈现出逐步增长的趋势。这一转变符合理论预测：随着载荷增大，系统倾向于增加周向波数以维持准不可伸缩变形的特性。
+
+模态选择的物理机制在于弯曲能与膜应变能之间的能量竞争。对于浅壳体系，弯曲刚度 $D \propto t^3$ 而膜刚度 $K \propto t$ ，这导致在薄壳情况下膜应变能的“代价”远高于弯曲能。因此，壳体倾向于通过增加曲率变化（即形成更多的脊线和顶点）来减少膜的拉伸变形。随着压入深度增加，单纯依靠少数脊线已无法有效容纳变形，系统必须增加周向波数 $n$ 以维持准不可伸缩特性。这一过程伴随着屈曲模态的跳跃式转变，符合实际观察到的多稳态现象。每次模态转变都对应着能量分布中不同局部极小值之间的跃迁。
+
+值得注意的是，模态转变并非连续过程，而是在特定的临界压入深度处发生突变。这一迟滞特性反映了系统能量分布的非凸性质，也解释了为何本研究必须采用多初值试探策略才能准确捕捉真实的物理解。
+
+总体来看，仿真结果与文献中的理论分析高度吻合，清晰展现了从 $n=4$ 到 $n=8$ 的模态演化序列。仿真结果展现的对称性破缺现象也印证了理论分析。
+
+\newpage
+
+\begin{thebibliography}{}
+    \bibitem{1}
+    Jayson Paulose, David R. Nelson. Buckling pathways in spherical shells with soft spots. Soft Matter, 2013, 9, 8227
+    \bibitem{2}
+    Ashkan Vaziri, L. Mahadevan. Localized and extended deformations of elastic shells. PNAS, 2008, vol. 105, no. 23, 7913–7918
+    \bibitem{3}
+    John W. Hutchinson. Buckling of spherical shells revisited. Proceedings of the Royal Society A, 2016, 472, 20160577
+    \bibitem{4}
+    Virtanen, P., Gommers, R., Oliphant, T.E. et al. SciPy 1.0: fundamental algorithms for scientific computing in Python. Nat Methods 17, 261–272 (2020).
+\end{thebibliography}
+
+\end{document}
