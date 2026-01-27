@@ -2,7 +2,7 @@
 
 > 本研究由 Google Gemini 3 Pro 与 Claude Sonnet 4.5 鼎力支持
 
-本研究是关于『球冠状薄壳受集中力作用时形变发生对称性破缺』的仿真代码。运行代码前请先安装 `code/requirements.txt` 中要求的库。
+本研究是关于『球冠状薄壳受集中力作用时形变发生对称性破缺』的仿真。运行代码前请先安装 `code/requirements.txt` 中要求的库。
 
 ---
 
